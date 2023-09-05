@@ -13,7 +13,7 @@ CONTAINER_DIR := $(realpath $(SCRIPT_DIR)/../container/)
 MNT_ROOT := /$(shell readlink -f . | cut -d"/" -f2)
 INSTALL_LOG := $(SCRIPT_DIR)"/.install.log"
 
-.PHONY: print_vars install update_amrfinderplus update_mlst_db update_blast_db
+.PHONY: print_vars install update_amrfinderplus update_mlst_db update_blast_db update_virulencefinder_db
 
 define log_message
 	@echo "--------------------------------------------------------------------------------" >> $(INSTALL_LOG)
@@ -31,7 +31,7 @@ print_paths:
 	@echo "CONTAINER_DIR:" $(CONTAINER_DIR)
 	@echo "MNT_ROOT:" $(MNT_ROOT)
 
-install: update_amrfinderplus update_mlst_db update_blast_db
+install: update_amrfinderplus update_mlst_db update_blast_db update_virulencefinder_db
 
 # ==============================================================================
 # Update databases
@@ -74,3 +74,32 @@ $(ASSETS_DIR)/mlst_db/blast:
 		--bind $(MNT_ROOT) \
 		$(CONTAINER_DIR)/blast.sif \
 		bash $(ASSETS_DIR)/mlst_db/mlst-make_blast_db.sh &>> $(INSTALL_LOG)
+
+# -----------------------------
+# Update VirulenceFinder database
+# -----------------------------
+update_virulencefinder_db: $(ASSETS_DIR)/virulencefinder_db/stx.name
+
+$(ASSETS_DIR)/virulencefinder_db/stx.name:
+	$(call log_message,"Starting update of VirulenceFinder database")
+	cd $(ASSETS_DIR)/kma \
+	&& make \
+	&& cd $(ASSETS_DIR)/virulencefinder_db \
+	&& export PATH=$(ASSETS_DIR)/kma:$$PATH \
+	&& singularity exec \
+		--bind $(MNT_ROOT) \
+		$(CONTAINER_DIR)/pythonScripts.sif \
+		python3 INSTALL.py \
+		$(ASSETS_DIR)/kma/kma_index \
+	&& cd $(ASSETS_DIR)/resfinder_db \
+	&& singularity exec \
+		--bind $(MNT_ROOT) \
+		$(CONTAINER_DIR)/pythonScripts.sif \
+		python3 INSTALL.py \
+		$(ASSETS_DIR)/kma/kma_index \
+	&& cd $(ASSETS_DIR)/pointfinder_db \
+	&& singularity exec \
+		--bind $(MNT_ROOT) \
+		$(CONTAINER_DIR)/pythonScripts.sif \
+		python3 INSTALL.py \
+		$(ASSETS_DIR)/kma/kma_index
