@@ -86,20 +86,249 @@ $(ASSETS_DIR)/virulencefinder_db/stx.name:
 	&& make \
 	&& cd $(ASSETS_DIR)/virulencefinder_db \
 	&& export PATH=$(ASSETS_DIR)/kma:$$PATH \
-	&& singularity exec \
-		--bind $(MNT_ROOT) \
-		$(CONTAINER_DIR)/pythonScripts.sif \
+	&& singularity exec	--bind $(MNT_ROOT) $(CONTAINER_DIR)/pythonScripts.sif \
 		python3 INSTALL.py \
 		$(ASSETS_DIR)/kma/kma_index \
 	&& cd $(ASSETS_DIR)/resfinder_db \
-	&& singularity exec \
-		--bind $(MNT_ROOT) \
-		$(CONTAINER_DIR)/pythonScripts.sif \
+	&& singularity exec --bind $(MNT_ROOT) $(CONTAINER_DIR)/pythonScripts.sif \
 		python3 INSTALL.py \
 		$(ASSETS_DIR)/kma/kma_index \
 	&& cd $(ASSETS_DIR)/pointfinder_db \
-	&& singularity exec \
-		--bind $(MNT_ROOT) \
-		$(CONTAINER_DIR)/pythonScripts.sif \
+	&& singularity exec --bind $(MNT_ROOT) $(CONTAINER_DIR)/pythonScripts.sif \
 		python3 INSTALL.py \
 		$(ASSETS_DIR)/kma/kma_index
+
+# ==============================================================================
+# Download, index and prep reference genomes for organisms
+# ==============================================================================
+
+# -----------------------------
+# S. Aureus
+# -----------------------------
+#  [ ] TODO: Test-run
+.PHONY: saureus_all saureus_download_reference saureus_index_reference saureus_download_cgmlst_schema saureus_prep_cgmlst_schema
+
+saureus_all: saureus_download_reference saureus_index_reference saureus_download_cgmlst_schema saureus_prep_cgmlst_schema
+
+saureus_download_reference:
+	cd $(ASSETS_DIR)/..
+	singularity exec --bind $(MNT_ROOT) $(CONTAINER_DIR)/pythonScripts.sif python3 bin/download_ncbi.py -i NC_002951.2 -o $(ASSETS_DIR)/genomes/staphylococcus_aureus
+
+saureus_index_reference:
+	cd $(ASSETS_DIR)/genomes/staphylococcus_aureus
+	singularity exec --bind $(MNT_ROOT) $(CONTAINER_DIR)/bwakit.sif bwa index NC_002951.2.fasta
+
+saureus_download_cgmlst_schema:
+	mkdir -p $(ASSETS_DIR)/cgmlst/staphylococcus_aureus/alleles &> /dev/null
+	cd $(ASSETS_DIR)/cgmlst/staphylococcus_aureus/alleles
+	wget https://www.cgmlst.org/ncs/schema/141106/alleles/ --no-check-certificate &> /dev/null
+	unzip index.html &> /dev/null
+
+saureus_prep_cgmlst_schema:
+	cd $(ASSETS_DIR)/cgmlst/staphylococcus_aureus/ \
+	&& echo "WARNING! Prepping cgMLST schema. This takes a looong time. Put on some coffee" \
+	&& singularity exec --bind $(MNT_ROOT) $(CONTAINER_DIR)/chewbbaca.sif \
+		chewie PrepExternalSchema \
+		-i $(ASSETS_DIR)/cgmlst/staphylococcus_aureus/alleles \
+		-o $(ASSETS_DIR)/cgmlst/staphylococcus_aureus/alleles_rereffed \
+		--cpu 1 \
+		--ptf $(ASSETS_DIR)/prodigal_training_files/Staphylococcus_aureus.trn
+
+# -----------------------------
+# E. coli
+# -----------------------------
+#  [ ] TODO: Test-run
+
+.PHONY: ecoli_all \
+	ecoli_download_reference \
+	ecoli_index_reference \
+	ecoli_download_wgmlst_schema \
+	ecoli_download_cgmlst_schema \
+	ecoli_prep_ecoli_cgmlst_schema
+
+ecoli_all: ecoli_download_reference \
+	ecoli_index_reference \
+	ecoli_download_wgmlst_schema \
+	ecoli_download_cgmlst_schema \
+	ecoli_prep_ecoli_cgmlst_schema
+
+ecoli_download_reference:
+	cd $(ASSETS_DIR)/.. \
+	&& singularity exec --bind $(MNT_ROOT) $(CONTAINER_DIR)/pythonScripts.sif \
+		python3 bin/download_ncbi.py \
+		-i NC_000913.3 \
+		-o $(ASSETS_DIR)/genomes/escherichia_coli
+
+ecoli_index_reference:
+	cd $(ASSETS_DIR)/genomes/escherichia_coli \
+	&& singularity exec --bind $(MNT_ROOT) $(CONTAINER_DIR)/bwakit.sif \
+		bwa index NC_000913.3.fasta
+
+# Download Ecoli wgmlst INNUENDO schema
+ecoli_download_wgmlst_schema:
+	mkdir -p $(ASSETS_DIR)/wgmlst/escherichia_coli/alleles &> /dev/null \
+	&& cd $(ASSETS_DIR)/wgmlst/escherichia_coli/alleles \
+	&& singularity exec --bind $(MNT_ROOT) $(CONTAINER_DIR)/chewbbaca.sif \
+		chewie DownloadSchema \
+		-sp 5 \
+		-sc 1 \
+		-o $(ASSETS_DIR)/wgmlst/escherichia_coli/alleles \
+		--latest
+
+# Download Ecoli cgmlst cgmlst.org schema
+ecoli_download_cgmlst_schema:
+	mkdir -p $(ASSETS_DIR)/cgmlst/escherichia_coli/alleles &> /dev/null \
+	&& cd $(ASSETS_DIR)/cgmlst/escherichia_coli/alleles \
+	&& wget https://www.cgmlst.org/ncs/schema/5064703/alleles/ --no-check-certificate &> /dev/null \
+	&& unzip index.html &> /dev/null
+
+## Prepping Ecoli cgmlst cgmlst.org schema
+ecoli_prep_ecoli_cgmlst_schema:
+	cd $(ASSETS_DIR)/cgmlst/escherichia_coli/ \
+	&& echo "WARNING! Prepping cgMLST schema. This takes a looong time. Put on some coffee" \
+	&& singularity exec --bind $(MNT_ROOT) $(CONTAINER_DIR)/chewbbaca.sif \
+		chewie PrepExternalSchema \
+		-i $(ASSETS_DIR)/cgmlst/escherichia_coli/alleles \
+		-o $(ASSETS_DIR)/cgmlst/escherichia_coli/alleles_rereffed \
+		--cpu 1 \
+		--ptf $(ASSETS_DIR)/prodigal_training_files/Escherichia_coli.trn
+
+# -----------------------------
+# K. pneumoniae
+# -----------------------------
+#  [ ] TODO: Test-run
+
+.PHONY: kpneumoniae_all \
+	kpneumoniae_download_reference \
+	kpneumoniae_index_reference \
+	kpneumoniae_download_cgmlst_schema \
+	kpneumoniae_prep_cgmlst_schema
+
+kpneumoniae_all: kpneumoniae_download_reference \
+	kpneumoniae_index_reference \
+	kpneumoniae_download_cgmlst_schema \
+	kpneumoniae_prep_cgmlst_schema
+
+kpneumoniae_download_reference:
+	cd $(ASSETS_DIR)/.. \
+	&& singularity exec --bind $(MNT_ROOT) $(CONTAINER_DIR)/pythonScripts.sif \
+		python3 bin/download_ncbi.py \
+		-i NC_016845.1 \
+		-o $(ASSETS_DIR)/genomes/klebsiella_pneumoniae
+
+kpneumoniae_index_reference:
+	cd $(ASSETS_DIR)/genomes/klebsiella_pneumoniae \
+	&& singularity exec --bind $(MNT_ROOT) $(CONTAINER_DIR)/bwakit.sif \
+		bwa index NC_016845.1.fasta
+
+# Download Kpneumoniae cgmlst cgmlst.org schema
+kpneumoniae_download_cgmlst_schema:
+	mkdir -p $(ASSETS_DIR)/cgmlst/klebsiella_pneumoniae/alleles &> /dev/null \
+	&& cd $(ASSETS_DIR)/cgmlst/klebsiella_pneumoniae/alleles \
+	&& wget https://www.cgmlst.org/ncs/schema/2187931/alleles/ --no-check-certificate &> /dev/null \
+	&& unzip index.html &> /dev/null
+
+# Prep Kpneumoniae cgmlst cgmlst.org schema
+kpneumoniae_prep_cgmlst_schema:
+	cd $(ASSETS_DIR)/cgmlst/klebsiella_pneumoniae/ \
+	&& echo "WARNING! Prepping cgMLST schema. This takes a looong time. Put on some coffee" \
+	&& singularity exec --bind $(MNT_ROOT) $(CONTAINER_DIR)/chewbbaca.sif \
+		chewie PrepExternalSchema \
+		-i $(ASSETS_DIR)/cgmlst/klebsiella_pneumoniae/alleles \
+		-o $(ASSETS_DIR)/cgmlst/klebsiella_pneumoniae/alleles_rereffed \
+		--cpu 1 \
+		--ptf $(ASSETS_DIR)/prodigal_training_files/Klebsiella_pneumoniae.trn #TO-DO: create Kpneumoniae training file
+
+# -----------------------------
+# M. tuberculosis
+# -----------------------------
+.PHONY: mtuberculosis_all mtuberculosis_download_reference mtuberculosis_index_reference
+
+mtuberculosis_all: mtuberculosis_download_reference mtuberculosis_index_reference
+
+mtuberculosis_download_reference:
+	cd $(ASSETS_DIR)/.. \
+	&& singularity exec --bind $(MNT_ROOT) $(CONTAINER_DIR)/pythonScripts.sif \
+		python3 bin/download_ncbi.py \
+		-i NC_000962.3 \
+		-o $(ASSETS_DIR)/genomes/mycobacterium_tuberculosis
+
+mtuberculosis_index_reference:
+	cd $(ASSETS_DIR)/genomes/mycobacterium_tuberculosis
+	singularity exec --bind $(MNT_ROOT) $(CONTAINER_DIR)/bwakit.sif \
+		bwa index NC_016845.1.fasta
+
+# ==============================================================================
+# Perform checks
+# ==============================================================================
+# TODO: Integrate with main installation rules?
+
+# -----------------------------
+# Check chewBBACA
+# -----------------------------
+check_chewbbaca:
+	@cd $(ASSETS_DIR)/.. \
+	&& saureus=$(ASSETS_DIR)/cgmlst/staphylococcus_aureus/alleles_rereffed \
+	&& if [ -d "$$saureus" ]; then \
+		echo "$$saureus exists."; \
+	else \
+		echo "ERROR: $$saureus does not exist!!! Please report this to JASEN issues."; \
+	fi
+
+# -----------------------------
+# Check BWA
+# -----------------------------
+check_bwa:
+	@cd $(ASSETS_DIR)/.. \
+	&& ref=$(ASSETS_DIR)/genomes/staphylococcus_aureus/NC_002951.2.fasta; \
+		refamb=$${ref}.amb; \
+		refann=$${ref}.ann; \
+		refbwt=$${ref}.bwt; \
+		refpac=$${ref}.pac; \
+		refsa=$${ref}.sa \
+	&& if [[ -f $$ref \
+		&& -f $${refamb} \
+		&& -f $${refann} \
+		&& -f $${refbwt} \
+		&& -f $${refpac} \
+		&& -f $${refsa} \
+	]]; then \
+		echo "bwa indexes exists."; \
+	else \
+		echo "ERROR: bwa indexes do not exist!!! Please report this to JASEN issues."; \
+	fi
+
+# -----------------------------
+# Check BlastDB
+# -----------------------------
+check_blastdb:
+	@cd $(ASSETS_DIR)/.. \
+	&& mlst=$(ASSETS_DIR)/mlst_db/blast/mlst.fa; \
+	 mlstndb=$${mlst}.ndb; \
+	 mlstnhd=$${mlst}.nhd; \
+	 mlstnhi=$${mlst}.nhi; \
+	 mlstnhr=$${mlst}.nhr; \
+	 mlstnin=$${mlst}.nin; \
+	 mlstnog=$${mlst}.nog; \
+	 mlstnos=$${mlst}.nos; \
+	 mlstnot=$${mlst}.not; \
+	 mlstnsq=$${mlst}.nsq; \
+	 mlstntf=$${mlst}.ntf; \
+	 mlstnto=$${mlst}.nto \
+	&& if [[ -f $${mlst} \
+		&& -f $${mlstndb} \
+		&& -f $${mlstnhd} \
+		&& -f $${mlstnhi} \
+		&& -f $${mlstnhr} \
+		&& -f $${mlstnin} \
+		&& -f $${mlstnog} \
+		&& -f $${mlstnos} \
+		&& -f $${mlstnot} \
+		&& -f $${mlstnsq} \
+		&& -f $${mlstntf} \
+		&& -f $${mlstnto} \
+	]]; then \
+		echo "BLAST indexes exists!"; \
+	else \
+		echo "ERROR: BLAST indexes do not exist!!! Please report this to JASEN issues."; \
+	fi
