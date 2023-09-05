@@ -165,7 +165,6 @@ $(ASSETS_DIR)/cgmlst/staphylococcus_aureus/alleles_rereffed/Staphylococcus_aureu
 # -----------------------------
 # E. coli
 # -----------------------------
-#  [ ] TODO: Test-run
 
 .PHONY: ecoli_all \
 	ecoli_download_reference \
@@ -174,26 +173,31 @@ $(ASSETS_DIR)/cgmlst/staphylococcus_aureus/alleles_rereffed/Staphylococcus_aureu
 	ecoli_download_cgmlst_schema \
 	ecoli_prep_ecoli_cgmlst_schema
 
-ecoli_all: ecoli_download_reference \
-	ecoli_index_reference \
+ecoli_all: ecoli_index_reference \
 	ecoli_download_wgmlst_schema \
-	ecoli_download_cgmlst_schema \
 	ecoli_prep_ecoli_cgmlst_schema
 
-ecoli_download_reference:
+ecoli_download_reference: $(ASSETS_DIR)/genomes/escherichia_coli/NC_000913.3.fasta
+
+$(ASSETS_DIR)/genomes/escherichia_coli/NC_000913.3.fasta:
 	cd $(ASSETS_DIR)/.. \
+	&& mkdir -p $(ASSETS_DIR)/genomes/escherichia_coli \
 	&& singularity exec --bind $(MNT_ROOT) $(CONTAINER_DIR)/pythonScripts.sif \
 		python3 bin/download_ncbi.py \
 		-i NC_000913.3 \
 		-o $(ASSETS_DIR)/genomes/escherichia_coli
 
-ecoli_index_reference:
+ecoli_index_reference: $(ASSETS_DIR)/genomes/escherichia_coli/NC_000913.3.fasta.bwt
+
+$(ASSETS_DIR)/genomes/escherichia_coli/NC_000913.3.fasta.bwt: $(ASSETS_DIR)/genomes/escherichia_coli/NC_000913.3.fasta
 	cd $(ASSETS_DIR)/genomes/escherichia_coli \
 	&& singularity exec --bind $(MNT_ROOT) $(CONTAINER_DIR)/bwakit.sif \
 		bwa index NC_000913.3.fasta
 
 # Download Ecoli wgmlst INNUENDO schema
-ecoli_download_wgmlst_schema:
+ecoli_download_wgmlst_schema: $(ASSETS_DIR)/wgmlst/escherichia_coli/alleles/ecoli_INNUENDO_wgMLST/Escherichia_coli.trn
+
+$(ASSETS_DIR)/wgmlst/escherichia_coli/alleles/ecoli_INNUENDO_wgMLST/Escherichia_coli.trn:
 	mkdir -p $(ASSETS_DIR)/wgmlst/escherichia_coli/alleles &> /dev/null \
 	&& cd $(ASSETS_DIR)/wgmlst/escherichia_coli/alleles \
 	&& singularity exec --bind $(MNT_ROOT) $(CONTAINER_DIR)/chewbbaca.sif \
@@ -204,14 +208,23 @@ ecoli_download_wgmlst_schema:
 		--latest
 
 # Download Ecoli cgmlst cgmlst.org schema
-ecoli_download_cgmlst_schema:
+ecoli_download_cgmlst_schema: $(ASSETS_DIR)/cgmlst/escherichia_coli/alleles/ecoli_cgmlst_alleles_5064703.zip
+
+$(ASSETS_DIR)/cgmlst/escherichia_coli/alleles/ecoli_cgmlst_alleles_5064703.zip:
 	mkdir -p $(ASSETS_DIR)/cgmlst/escherichia_coli/alleles &> /dev/null \
 	&& cd $(ASSETS_DIR)/cgmlst/escherichia_coli/alleles \
-	&& wget https://www.cgmlst.org/ncs/schema/5064703/alleles/ --no-check-certificate &> /dev/null \
-	&& unzip index.html &> /dev/null
+	&& wget -O ecoli_cgmlst_alleles_5064703.zip https://www.cgmlst.org/ncs/schema/5064703/alleles/ --no-check-certificate &> /dev/null
+
+ecoli_unpack_cgmlst_schema: $(ASSETS_DIR)/cgmlst/escherichia_coli/alleles/b4383.fasta
+
+$(ASSETS_DIR)/cgmlst/escherichia_coli/alleles/b4383.fasta: $(ASSETS_DIR)/cgmlst/escherichia_coli/alleles/ecoli_cgmlst_alleles_5064703.zip
+	cd $(ASSETS_DIR)/cgmlst/escherichia_coli/alleles \
+	&& unzip -Duq $$(basename $<)
 
 ## Prepping Ecoli cgmlst cgmlst.org schema
-ecoli_prep_ecoli_cgmlst_schema:
+ecoli_prep_ecoli_cgmlst_schema: $(ASSETS_DIR)/cgmlst/escherichia_coli/alleles_rereffed/Escherichia_coli.trn
+
+$(ASSETS_DIR)/cgmlst/escherichia_coli/alleles_rereffed/Escherichia_coli.trn: $(ASSETS_DIR)/cgmlst/escherichia_coli/alleles/b4383.fasta
 	cd $(ASSETS_DIR)/cgmlst/escherichia_coli/ \
 	&& echo "WARNING! Prepping cgMLST schema. This takes a looong time. Put on some coffee" \
 	&& singularity exec --bind $(MNT_ROOT) $(CONTAINER_DIR)/chewbbaca.sif \
