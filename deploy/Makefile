@@ -11,14 +11,14 @@ CONTAINER_DIR := $(realpath $(SCRIPT_DIR)/../container/)
 # The root folder where the pipeline is currently located. To be mounted into
 # the Singularity containers below.
 MNT_ROOT := /$(shell readlink -f . | cut -d"/" -f2)
-INSTALL_LOG := $(SCRIPT_DIR)"/.install.log"
+INSTALL_LOG := "$(SCRIPT_DIR)/.install.log"
 
 .PHONY: print_vars install update_amrfinderplus update_mlst_db update_blast_db update_virulencefinder_db
 
 define log_message
-	@echo "--------------------------------------------------------------------------------" >> $(INSTALL_LOG)
-	@echo $(shell date "+%Y-%m-%d %H:%M:%S"): $1 >> $(INSTALL_LOG)
-	@echo "--------------------------------------------------------------------------------" >> $(INSTALL_LOG)
+	@echo "--------------------------------------------------------------------------------" | tee -a $(INSTALL_LOG);
+	@echo "$$(date "+%Y-%m-%d %H:%M:%S"): $1" | tee -a $(INSTALL_LOG);
+	@echo "--------------------------------------------------------------------------------" | tee -a $(INSTALL_LOG);
 endef
 
 # ==============================================================================
@@ -105,26 +105,54 @@ $(ASSETS_DIR)/virulencefinder_db/stx.name:
 # -----------------------------
 # S. Aureus
 # -----------------------------
-#  [ ] TODO: Test-run
-.PHONY: saureus_all saureus_download_reference saureus_index_reference saureus_download_cgmlst_schema saureus_prep_cgmlst_schema
+#.PHONY: saureus_all saureus_download_reference saureus_index_reference saureus_download_cgmlst_schema saureus_unpack_cgmlst_schema saureus_prep_cgmlst_schema
 
-saureus_all: saureus_download_reference saureus_index_reference saureus_download_cgmlst_schema saureus_prep_cgmlst_schema
+saureus_all: saureus_download_reference saureus_index_reference saureus_download_cgmlst_schema saureus_unpack_cgmlst_schema saureus_prep_cgmlst_schema
 
-saureus_download_reference:
-	cd $(ASSETS_DIR)/..
-	singularity exec --bind $(MNT_ROOT) $(CONTAINER_DIR)/pythonScripts.sif python3 bin/download_ncbi.py -i NC_002951.2 -o $(ASSETS_DIR)/genomes/staphylococcus_aureus
+saureus_download_reference: $(ASSETS_DIR)/genomes/staphylococcus_aureus/NC_002951.2.fasta
 
-saureus_index_reference:
-	cd $(ASSETS_DIR)/genomes/staphylococcus_aureus
-	singularity exec --bind $(MNT_ROOT) $(CONTAINER_DIR)/bwakit.sif bwa index NC_002951.2.fasta
+$(ASSETS_DIR)/genomes/staphylococcus_aureus/NC_002951.2.fasta:
+	$(call log_message,"Downloading S. Aureus reference genome ...")
+	mkdir -p $(ASSETS_DIR)/genomes/staphylococcus_aureus \
+	&& cd $(ASSETS_DIR)/.. \
+	&& singularity exec --bind $(MNT_ROOT) $(CONTAINER_DIR)/pythonScripts.sif \
+		python3 bin/download_ncbi.py \
+		-i NC_002951.2 \
+		-o $(ASSETS_DIR)/genomes/staphylococcus_aureus
 
-saureus_download_cgmlst_schema:
-	mkdir -p $(ASSETS_DIR)/cgmlst/staphylococcus_aureus/alleles &> /dev/null
-	cd $(ASSETS_DIR)/cgmlst/staphylococcus_aureus/alleles
-	wget https://www.cgmlst.org/ncs/schema/141106/alleles/ --no-check-certificate &> /dev/null
-	unzip index.html &> /dev/null
 
-saureus_prep_cgmlst_schema:
+saureus_index_reference: $(ASSETS_DIR)/genomes/staphylococcus_aureus/NC_002951.2.fasta.bwt
+
+$(ASSETS_DIR)/genomes/staphylococcus_aureus/NC_002951.2.fasta.bwt: $(ASSETS_DIR)/genomes/staphylococcus_aureus/NC_002951.2.fasta
+	$(call log_message,"Indexing S. Aureus reference genome ...")
+	cd $(ASSETS_DIR)/genomes/staphylococcus_aureus \
+	&& singularity exec --bind $(MNT_ROOT) $(CONTAINER_DIR)/bwakit.sif \
+		bwa index NC_002951.2.fasta
+
+
+saureus_download_cgmlst_schema: $(ASSETS_DIR)/cgmlst/staphylococcus_aureus/alleles/cgmlst_141106.zip
+
+$(ASSETS_DIR)/cgmlst/staphylococcus_aureus/alleles/cgmlst_141106.zip:
+	$(call log_message,"Downloading S. Aureus cgMLST schema ...")
+	mkdir -p $(ASSETS_DIR)/cgmlst/staphylococcus_aureus/alleles &> /dev/null \
+	&& cd $(ASSETS_DIR)/cgmlst/staphylococcus_aureus/alleles \
+	&& wget https://www.cgmlst.org/ncs/schema/141106/alleles/ \
+		-O $@ \
+		--no-check-certificate &> /dev/null \
+
+
+saureus_unpack_cgmlst_schema: $(ASSETS_DIR)/cgmlst/staphylococcus_aureus/alleles/SACOL2694.fasta
+
+$(ASSETS_DIR)/cgmlst/staphylococcus_aureus/alleles/SACOL2694.fasta: $(ASSETS_DIR)/cgmlst/staphylococcus_aureus/alleles/cgmlst_141106.zip
+	$(call log_message,"Unpacking S. Aureus cgMLST schema ...")
+	cd $$(dirname $<) \
+		&& unzip -Duq $$(basename $<)
+
+
+saureus_prep_cgmlst_schema: $(ASSETS_DIR)/cgmlst/staphylococcus_aureus/alleles_rereffed/Staphylococcus_aureus.trn
+
+$(ASSETS_DIR)/cgmlst/staphylococcus_aureus/alleles_rereffed/Staphylococcus_aureus.trn: $(ASSETS_DIR)/cgmlst/staphylococcus_aureus/alleles/SACOL2694.fasta
+	$(call log_message,"Prepping S. Aureus cgMLST schema ...")
 	cd $(ASSETS_DIR)/cgmlst/staphylococcus_aureus/ \
 	&& echo "WARNING! Prepping cgMLST schema. This takes a looong time. Put on some coffee" \
 	&& singularity exec --bind $(MNT_ROOT) $(CONTAINER_DIR)/chewbbaca.sif \
