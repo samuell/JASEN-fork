@@ -261,52 +261,55 @@ kpneumoniae_all: kpneumoniae_download_reference \
 	kpneumoniae_prep_cgmlst_schema
 
 
-kpneumoniae_download_reference: $(ASSETS_DIR)/genomes/klebsiella_pneumoniae/NC_016845.1.fasta
+KPNEU_GENOMES_DIR := "$(ASSETS_DIR)/genomes/klebsiella_pneumoniae"
+KPNEU_CGMLST_DIR := "$(ASSETS_DIR)/cgmlst/klebsiella_pneumoniae"
 
-$(ASSETS_DIR)/genomes/klebsiella_pneumoniae/NC_016845.1.fasta:
+kpneumoniae_download_reference: $(KPNEU_GENOMES_DIR)/NC_016845.1.fasta
+
+$(KPNEU_GENOMES_DIR)/NC_016845.1.fasta:
 	cd $(ASSETS_DIR)/.. \
-	&& mkdir -p $(ASSETS_DIR)/genomes/klebsiella_pneumoniae \
+	&& mkdir -p $(KPNEU_GENOMES_DIR) \
 	&& singularity exec --bind $(MNT_ROOT) $(CONTAINER_DIR)/pythonScripts.sif \
 		python3 bin/download_ncbi.py \
 		-i NC_016845.1 \
-		-o $(ASSETS_DIR)/genomes/klebsiella_pneumoniae
+		-o $(KPNEU_GENOMES_DIR)
 
 
-kpneumoniae_index_reference: $(ASSETS_DIR)/genomes/klebsiella_pneumoniae/NC_016845.1.fasta.bwt
+kpneumoniae_index_reference: $(KPNEU_GENOMES_DIR)/NC_016845.1.fasta.bwt
 
-$(ASSETS_DIR)/genomes/klebsiella_pneumoniae/NC_016845.1.fasta.bwt:
-	cd $(ASSETS_DIR)/genomes/klebsiella_pneumoniae \
+$(KPNEU_GENOMES_DIR)/NC_016845.1.fasta.bwt:
+	cd $(KPNEU_GENOMES_DIR) \
 	&& singularity exec --bind $(MNT_ROOT) $(CONTAINER_DIR)/bwakit.sif \
 		bwa index NC_016845.1.fasta
 
 
 # Download Kpneumoniae cgmlst cgmlst.org schema
-kpneumoniae_download_cgmlst_schema: $(ASSETS_DIR)/cgmlst/klebsiella_pneumoniae/alleles/cgmlst_schema_2187931.zip
+kpneumoniae_download_cgmlst_schema: $(KPNEU_CGMLST_DIR)/alleles/cgmlst_schema_2187931.zip
 
-$(ASSETS_DIR)/cgmlst/klebsiella_pneumoniae/alleles/cgmlst_schema_2187931.zip:
-	mkdir -p $(ASSETS_DIR)/cgmlst/klebsiella_pneumoniae/alleles \
-	&& cd $(ASSETS_DIR)/cgmlst/klebsiella_pneumoniae/alleles \
+$(KPNEU_CGMLST_DIR)/alleles/cgmlst_schema_2187931.zip:
+	mkdir -p $(KPNEU_CGMLST_DIR)/alleles \
+	&& cd $(KPNEU_CGMLST_DIR)/alleles \
 	&& wget -O cgmlst_schema_2187931.zip https://www.cgmlst.org/ncs/schema/2187931/alleles/ --no-check-certificate &> /dev/null
 
 
-kpneumoniae_unpack_cgmlst_schema: $(ASSETS_DIR)/cgmlst/klebsiella_pneumoniae/alleles/KP1_RS24625.fasta
+kpneumoniae_unpack_cgmlst_schema: $(KPNEU_CGMLST_DIR)/alleles/KP1_RS24625.fasta
 
-$(ASSETS_DIR)/cgmlst/klebsiella_pneumoniae/alleles/KP1_RS24625.fasta: $(ASSETS_DIR)/cgmlst/klebsiella_pneumoniae/alleles/cgmlst_schema_2187931.zip
-	cd $(ASSETS_DIR)/cgmlst/klebsiella_pneumoniae/alleles \
+$(KPNEU_CGMLST_DIR)/alleles/KP1_RS24625.fasta: $(KPNEU_CGMLST_DIR)/alleles/cgmlst_schema_2187931.zip
+	cd $(KPNEU_CGMLST_DIR)/alleles \
 	&& unzip -Duq $$(basename $<)
 
 
 # Prep Kpneumoniae cgmlst cgmlst.org schema
-kpneumoniae_prep_cgmlst_schema: $(ASSETS_DIR)/cgmlst/klebsiella_pneumoniae/alleles_rereffed/Klebsiella_pneumoniae.trn
+kpneumoniae_prep_cgmlst_schema: $(KPNEU_CGMLST_DIR)/alleles_rereffed/Klebsiella_pneumoniae.trn
 
-$(ASSETS_DIR)/cgmlst/klebsiella_pneumoniae/alleles_rereffed/Klebsiella_pneumoniae.trn:
-	$(call log_message,"Prepping K. pneumoniae cgMLST schema ... WARNING: This takes a looong time. Put on some coffee")
-	mkdir -p $(ASSETS_DIR)/cgmlst/klebsiella_pneumoniae/alleles_rereffed \
-	&& cd $(ASSETS_DIR)/cgmlst/klebsiella_pneumoniae/ \
+$(KPNEU_CGMLST_DIR)/alleles_rereffed/Klebsiella_pneumoniae.trn:
+	$(call log_message,"Prepping K. pneumoniae cgMLST schema ... Warning: This takes a looong time. Put on some coffee!")
+	mkdir -p $(KPNEU_CGMLST_DIR)/alleles_rereffed \
+	&& cd $(KPNEU_CGMLST_DIR) \
 	&& singularity exec --bind $(MNT_ROOT) $(CONTAINER_DIR)/chewbbaca.sif \
 		chewie PrepExternalSchema \
-		-i $(ASSETS_DIR)/cgmlst/klebsiella_pneumoniae/alleles \
-		-o $(ASSETS_DIR)/cgmlst/klebsiella_pneumoniae/alleles_rereffed \
+		-i $(KPNEU_CGMLST_DIR)/alleles \
+		-o $(KPNEU_CGMLST_DIR)/alleles_rereffed \
 		--cpu 1 \
 		--ptf $(ASSETS_DIR)/prodigal_training_files/Klebsiella_pneumoniae.trn #TODO: create Kpneumoniae training file
 
