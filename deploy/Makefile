@@ -107,7 +107,11 @@ $(ASSETS_DIR)/virulencefinder_db/stx.name:
 # -----------------------------
 #.PHONY: saureus_all saureus_download_reference saureus_index_reference saureus_download_cgmlst_schema saureus_unpack_cgmlst_schema saureus_prep_cgmlst_schema
 
-saureus_all: saureus_download_reference saureus_index_reference saureus_download_cgmlst_schema saureus_unpack_cgmlst_schema saureus_prep_cgmlst_schema
+saureus_all: saureus_download_reference \
+	saureus_index_reference \
+	saureus_download_cgmlst_schema \
+	saureus_unpack_cgmlst_schema \
+	saureus_prep_cgmlst_schema
 
 saureus_download_reference: $(ASSETS_DIR)/genomes/staphylococcus_aureus/NC_002951.2.fasta
 
@@ -177,6 +181,7 @@ ecoli_all: ecoli_index_reference \
 	ecoli_download_wgmlst_schema \
 	ecoli_prep_ecoli_cgmlst_schema
 
+
 ecoli_download_reference: $(ASSETS_DIR)/genomes/escherichia_coli/NC_000913.3.fasta
 
 $(ASSETS_DIR)/genomes/escherichia_coli/NC_000913.3.fasta:
@@ -187,12 +192,14 @@ $(ASSETS_DIR)/genomes/escherichia_coli/NC_000913.3.fasta:
 		-i NC_000913.3 \
 		-o $(ASSETS_DIR)/genomes/escherichia_coli
 
+
 ecoli_index_reference: $(ASSETS_DIR)/genomes/escherichia_coli/NC_000913.3.fasta.bwt
 
 $(ASSETS_DIR)/genomes/escherichia_coli/NC_000913.3.fasta.bwt: $(ASSETS_DIR)/genomes/escherichia_coli/NC_000913.3.fasta
 	cd $(ASSETS_DIR)/genomes/escherichia_coli \
 	&& singularity exec --bind $(MNT_ROOT) $(CONTAINER_DIR)/bwakit.sif \
 		bwa index NC_000913.3.fasta
+
 
 # Download Ecoli wgmlst INNUENDO schema
 ecoli_download_wgmlst_schema: $(ASSETS_DIR)/wgmlst/escherichia_coli/alleles/ecoli_INNUENDO_wgMLST/Escherichia_coli.trn
@@ -207,6 +214,7 @@ $(ASSETS_DIR)/wgmlst/escherichia_coli/alleles/ecoli_INNUENDO_wgMLST/Escherichia_
 		-o $(ASSETS_DIR)/wgmlst/escherichia_coli/alleles \
 		--latest
 
+
 # Download Ecoli cgmlst cgmlst.org schema
 ecoli_download_cgmlst_schema: $(ASSETS_DIR)/cgmlst/escherichia_coli/alleles/ecoli_cgmlst_alleles_5064703.zip
 
@@ -215,11 +223,13 @@ $(ASSETS_DIR)/cgmlst/escherichia_coli/alleles/ecoli_cgmlst_alleles_5064703.zip:
 	&& cd $(ASSETS_DIR)/cgmlst/escherichia_coli/alleles \
 	&& wget -O ecoli_cgmlst_alleles_5064703.zip https://www.cgmlst.org/ncs/schema/5064703/alleles/ --no-check-certificate &> /dev/null
 
+
 ecoli_unpack_cgmlst_schema: $(ASSETS_DIR)/cgmlst/escherichia_coli/alleles/b4383.fasta
 
 $(ASSETS_DIR)/cgmlst/escherichia_coli/alleles/b4383.fasta: $(ASSETS_DIR)/cgmlst/escherichia_coli/alleles/ecoli_cgmlst_alleles_5064703.zip
 	cd $(ASSETS_DIR)/cgmlst/escherichia_coli/alleles \
 	&& unzip -Duq $$(basename $<)
+
 
 ## Prepping Ecoli cgmlst cgmlst.org schema
 ecoli_prep_ecoli_cgmlst_schema: $(ASSETS_DIR)/cgmlst/escherichia_coli/alleles_rereffed/Escherichia_coli.trn
