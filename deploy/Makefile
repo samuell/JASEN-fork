@@ -244,10 +244,11 @@ $(ASSETS_DIR)/cgmlst/escherichia_coli/alleles_rereffed/Escherichia_coli.trn: $(A
 		--cpu 1 \
 		--ptf $(ASSETS_DIR)/prodigal_training_files/Escherichia_coli.trn
 
+
 # -----------------------------
 # K. pneumoniae
 # -----------------------------
-#  [ ] TODO: Test-run
+#  [>] TODO: Test-run
 
 .PHONY: kpneumoniae_all \
 	kpneumoniae_download_reference \
@@ -260,17 +261,25 @@ kpneumoniae_all: kpneumoniae_download_reference \
 	kpneumoniae_download_cgmlst_schema \
 	kpneumoniae_prep_cgmlst_schema
 
-kpneumoniae_download_reference:
+
+kpneumoniae_download_reference: $(ASSETS_DIR)/genomes/klebsiella_pneumoniae/NC_016845.1.fasta
+
+$(ASSETS_DIR)/genomes/klebsiella_pneumoniae/NC_016845.1.fasta:
 	cd $(ASSETS_DIR)/.. \
+	&& mkdir -p $(ASSETS_DIR)/genomes/klebsiella_pneumoniae \
 	&& singularity exec --bind $(MNT_ROOT) $(CONTAINER_DIR)/pythonScripts.sif \
 		python3 bin/download_ncbi.py \
 		-i NC_016845.1 \
 		-o $(ASSETS_DIR)/genomes/klebsiella_pneumoniae
 
-kpneumoniae_index_reference:
+
+kpneumoniae_index_reference: $(ASSETS_DIR)/genomes/klebsiella_pneumoniae/NC_016845.1.fasta.bwt
+
+$(ASSETS_DIR)/genomes/klebsiella_pneumoniae/NC_016845.1.fasta.bwt:
 	cd $(ASSETS_DIR)/genomes/klebsiella_pneumoniae \
 	&& singularity exec --bind $(MNT_ROOT) $(CONTAINER_DIR)/bwakit.sif \
 		bwa index NC_016845.1.fasta
+
 
 # Download Kpneumoniae cgmlst cgmlst.org schema
 kpneumoniae_download_cgmlst_schema:
